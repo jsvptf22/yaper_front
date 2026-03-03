@@ -7,12 +7,11 @@ import { useTheme } from '@mui/material/styles';
 
 // ==============================|| CUSTOM SUB CARD ||============================== //
 
-const SubCard = forwardRef<unknown,Record<string,any>>(({ children, content, contentClass, darkTitle, secondary, sx = {}, contentSX = {}, title, ...others }, ref) => {
+const SubCard = forwardRef<HTMLDivElement,Record<string,any>>(({ children, content, contentClass, darkTitle, secondary, sx = {}, contentSX = {}, title, ...others }, ref) => {
     const theme = useTheme();
 
     return (
         <Card
-            //@ts-ignore
             ref={ref}
             sx={{
                 border: '1px solid',

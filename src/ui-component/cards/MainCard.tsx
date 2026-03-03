@@ -8,7 +8,7 @@ const headerSX = {
 
 // ==============================|| CUSTOM MAIN CARD ||============================== //
 
-const MainCard = forwardRef<unknown,Record<string,any>>(
+const MainCard = forwardRef<HTMLDivElement, Record<string, any>>(
     (
         {
             border = true,
@@ -30,7 +30,6 @@ const MainCard = forwardRef<unknown,Record<string,any>>(
 
         return (
             <Card
-                //@ts-ignore
                 ref={ref}
                 {...others}
                 sx={{
