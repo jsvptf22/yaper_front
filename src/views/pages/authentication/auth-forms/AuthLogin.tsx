@@ -1,9 +1,6 @@
 import Google from '@app/assets/images/icons/social-google.svg';
-import { auth } from '@app/firebase';
-import useScriptRef from '@app/hooks/useScriptRef';
-import { SigninService } from '@app/services/signin.service';
+import { useAuth } from '@app/hooks/useAuth';
 import { StateType } from '@app/store/reducer';
-import { SESSION_ACTIONS } from '@app/store/sessionReducer';
 import AnimateButton from '@app/ui-component/extended/AnimateButton';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
@@ -25,68 +22,18 @@ import {
     useMediaQuery
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { GoogleAuthProvider, getRedirectResult, signInWithEmailAndPassword, signInWithRedirect } from 'firebase/auth';
 import { Formik } from 'formik';
-import { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useSelector } from 'react-redux';
 import * as Yup from 'yup';
 
 const FirebaseLogin = ({ ...others }) => {
-    const dispatch = useDispatch();
-    const navigate = useNavigate();
     const theme = useTheme();
-    const scriptedRef = useScriptRef();
     const matchDownSM = useMediaQuery(theme.breakpoints.down('md'));
     const customization = useSelector((state: StateType) => state.customization);
-    const [checked, setChecked] = useState(true);
-
-    const googleHandler = async () => {
-        var provider = new GoogleAuthProvider();
-        provider.addScope('https://www.googleapis.com/auth/userinfo.email');
-
-        try {
-            signInWithRedirect(auth, provider);
-        } catch (error) {
-            console.log(error);
-        }
-    };
-
-    const verifyGoogleAuth = async () => {
-        const googleData = await getRedirectResult(auth);
-
-        if (!googleData) return;
-
-        console.log(googleData);
-
-        const user = googleData.user;
-        console.log(user);
-
-        if (user) {
-            const values = {
-                email: user.email,
-                password: user.uid,
-            }
-            const findedUser = await SigninService.exec(values)
-            if (findedUser) {
-                dispatch({ type: SESSION_ACTIONS.UPDATE_USER, user: findedUser });
-                navigate('/')
-            }
-        }
-    }
-
     const [showPassword, setShowPassword] = useState(false);
-    const handleClickShowPassword = () => {
-        setShowPassword(!showPassword);
-    };
-
-    const handleMouseDownPassword = (event) => {
-        event.preventDefault();
-    };
-
-    useEffect(() => {
-        verifyGoogleAuth();
-    }, [])
+    const [remember, setRemember] = useState(true);
+    const { loginWithEmail, loginWithGoogle, isLoading, getErrorMessage } = useAuth();
 
     return (
         <>
@@ -96,9 +43,10 @@ const FirebaseLogin = ({ ...others }) => {
                         <Button
                             disableElevation
                             fullWidth
-                            onClick={googleHandler}
+                            onClick={loginWithGoogle}
                             size="large"
                             variant="outlined"
+                            disabled={isLoading}
                             sx={{
                                 color: 'grey.700',
                                 backgroundColor: theme.palette.grey[50],
@@ -113,14 +61,8 @@ const FirebaseLogin = ({ ...others }) => {
                     </AnimateButton>
                 </Grid>
                 <Grid item xs={12}>
-                    <Box
-                        sx={{
-                            alignItems: 'center',
-                            display: 'flex'
-                        }}
-                    >
+                    <Box sx={{ alignItems: 'center', display: 'flex' }}>
                         <Divider sx={{ flexGrow: 1 }} orientation="horizontal" />
-
                         <Button
                             variant="outlined"
                             sx={{
@@ -138,70 +80,37 @@ const FirebaseLogin = ({ ...others }) => {
                         >
                             O
                         </Button>
-
                         <Divider sx={{ flexGrow: 1 }} orientation="horizontal" />
                     </Box>
                 </Grid>
                 <Grid item xs={12} container alignItems="center" justifyContent="center">
                     <Box sx={{ mb: 2 }}>
-                        <Typography variant="subtitle1">
-                            Iniciar sesión con correo electrónico
-                        </Typography>
+                        <Typography variant="subtitle1">Iniciar sesión con correo electrónico</Typography>
                     </Box>
                 </Grid>
             </Grid>
 
             <Formik
-                initialValues={{
-                    email: '',
-                    password: '',
-                    submit: null
-                }}
+                initialValues={{ email: '', password: '', submit: null }}
                 validationSchema={Yup.object().shape({
-                    email: Yup.string().email('Debe ser un correo valido').max(255).required('El correo es requerido'),
-                    password: Yup.string().max(255).required('La contraseña es requerida')
+                    email: Yup.string().email('Debe ser un correo válido').max(255).required('El correo es requerido'),
+                    password: Yup.string().max(255).required('La contraseña es requerida'),
                 })}
                 onSubmit={async (values, { setErrors, setStatus, setSubmitting }) => {
                     try {
-                        const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password)
-                        // Signed in
-                        const user = userCredential.user;
-                        console.log(user);
-
-                        if (user) {
-                            const findedUser = await SigninService.exec(values)
-                            if (findedUser) {
-                                dispatch({ type: SESSION_ACTIONS.UPDATE_USER, user: findedUser });
-                                navigate('/')
-                            }
-                        }
-
-                        if (scriptedRef.current) {
-                            setStatus({ success: true });
-                            setSubmitting(false);
-                        }
-                    } catch (err) {
-                        console.error(err);
-
-                        if (err.code === 'auth/user-not-found') {
-                            setErrors({ submit: 'El correo electrónico o la contraseña son incorrectos' });
-                        }
-
-                        if (err.code === 'auth/wrong-password') {
-                            setErrors({ submit: 'El correo electrónico o la contraseña son incorrectos' });
-                        }
-
-                        if (scriptedRef.current) {
-                            setStatus({ success: false });
-                            setErrors({ submit: err.message });
-                            setSubmitting(false);
-                        }
+                        await loginWithEmail(values.email, values.password, remember);
+                        setStatus({ success: true });
+                    } catch (err: any) {
+                        setStatus({ success: false });
+                        setErrors({ submit: getErrorMessage(err.code) });
+                    } finally {
+                        setSubmitting(false);
                     }
                 }}
             >
                 {({ errors, handleBlur, handleChange, handleSubmit, isSubmitting, touched, values }) => (
                     <form noValidate onSubmit={handleSubmit} {...others}>
-                        {/*@ts-ignore*/}
+                        {/* @ts-ignore */}
                         <FormControl fullWidth error={Boolean(touched.email && errors.email)} sx={{ ...theme.typography.customInput }}>
                             <InputLabel htmlFor="outlined-adornment-email-login">Correo electrónico</InputLabel>
                             <OutlinedInput
@@ -224,7 +133,7 @@ const FirebaseLogin = ({ ...others }) => {
                         <FormControl
                             fullWidth
                             error={Boolean(touched.password && errors.password)}
-                            //@ts-ignore
+                            // @ts-ignore
                             sx={{ ...theme.typography.customInput }}
                         >
                             <InputLabel htmlFor="outlined-adornment-password-login">Contraseña</InputLabel>
@@ -239,8 +148,8 @@ const FirebaseLogin = ({ ...others }) => {
                                     <InputAdornment position="end">
                                         <IconButton
                                             aria-label="toggle password visibility"
-                                            onClick={handleClickShowPassword}
-                                            onMouseDown={handleMouseDownPassword}
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            onMouseDown={(e) => e.preventDefault()}
                                             edge="end"
                                             size="large"
                                         >
@@ -257,13 +166,14 @@ const FirebaseLogin = ({ ...others }) => {
                                 </FormHelperText>
                             )}
                         </FormControl>
+
                         <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
                             <FormControlLabel
                                 control={
                                     <Checkbox
-                                        checked={checked}
-                                        onChange={(event) => setChecked(event.target.checked)}
-                                        name="checked"
+                                        checked={remember}
+                                        onChange={(e) => setRemember(e.target.checked)}
+                                        name="remember"
                                         color="primary"
                                     />
                                 }
@@ -273,9 +183,10 @@ const FirebaseLogin = ({ ...others }) => {
                                 ¿Olvidaste tu contraseña?
                             </Typography>
                         </Stack>
+
                         {errors.submit && (
                             <Box sx={{ mt: 3 }}>
-                                {/*@ts-ignore*/}
+                                {/* @ts-ignore */}
                                 <FormHelperText error>{errors.submit}</FormHelperText>
                             </Box>
                         )}
@@ -284,7 +195,7 @@ const FirebaseLogin = ({ ...others }) => {
                             <AnimateButton>
                                 <Button
                                     disableElevation
-                                    disabled={isSubmitting}
+                                    disabled={isSubmitting || isLoading}
                                     fullWidth
                                     size="large"
                                     type="submit"

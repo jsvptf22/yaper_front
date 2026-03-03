@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { Link, useNavigate } from 'react-router-dom';
-
-
-// material-ui
+import Google from '@app/assets/images/icons/social-google.svg';
+import { useAuth } from '@app/hooks/useAuth';
+import { StateType } from '@app/store/reducer';
+import AnimateButton from '@app/ui-component/extended/AnimateButton';
+import { strengthColor, strengthIndicator } from '@app/utils/password-strength';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import {
     Box,
     Button,
@@ -22,82 +23,29 @@ import {
     useMediaQuery
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-
-// third party
 import { Formik } from 'formik';
+import { useEffect, useState } from 'react';
+import { useSelector } from 'react-redux';
+import { Link } from 'react-router-dom';
 import * as Yup from 'yup';
 
-// project imports
-import Google from '@app/assets/images/icons/social-google.svg';
-import useScriptRef from '@app/hooks/useScriptRef';
-import AnimateButton from '@app/ui-component/extended/AnimateButton';
-import { strengthColor, strengthIndicator } from '@app/utils/password-strength';
-
-// assets
-import { auth } from '@app/firebase';
-import { SignupService } from '@app/services/signup.service';
-import { StateType } from '@app/store/reducer';
-import { SESSION_ACTIONS } from '@app/store/sessionReducer';
-import Visibility from '@mui/icons-material/Visibility';
-import VisibilityOff from '@mui/icons-material/VisibilityOff';
-import { Theme } from '@mui/system/createTheme';
-import { GoogleAuthProvider, createUserWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
-
-// ===========================|| FIREBASE - REGISTER ||=========================== //
-
 const FirebaseRegister = ({ ...others }) => {
-    const dispatch = useDispatch();
-    const navigate = useNavigate();
-    const theme: Theme = useTheme();
-    const scriptedRef = useScriptRef();
+    const theme = useTheme();
     const matchDownSM = useMediaQuery(theme.breakpoints.down('md'));
     const customization = useSelector((state: StateType) => state.customization);
     const [showPassword, setShowPassword] = useState(false);
-    const [checked, setChecked] = useState(true);
-
     const [strength, setStrength] = useState(0);
-    const [level, setLevel] = useState();
+    const [level, setLevel] = useState<{ color: string; label: string } | undefined>();
+    const { registerWithEmail, registerWithGoogle, isLoading, getErrorMessage } = useAuth();
 
-    const googleHandler = async () => {
-        var provider = new GoogleAuthProvider();
-        provider.addScope('https://www.googleapis.com/auth/userinfo.email');
-
-        try {
-            const userCredential = await signInWithPopup(auth, provider);
-            const user = userCredential.user;
-            console.log(user);
-
-            if (user) {
-                const findedUser = await SignupService.exec({
-                    name: user.displayName,
-                    email: user.email,
-                    password: user.uid,
-                    agreed: true
-                })
-                dispatch({ type: SESSION_ACTIONS.UPDATE_USER, user: findedUser });
-                navigate('/')
-            }
-        } catch (error) {
-            console.log(error);
-        }
-    };
-
-    const handleClickShowPassword = () => {
-        setShowPassword(!showPassword);
-    };
-
-    const handleMouseDownPassword = (event) => {
-        event.preventDefault();
-    };
-
-    const changePassword = (value) => {
+    const changePassword = (value: string) => {
         const temp = strengthIndicator(value);
         setStrength(temp);
         setLevel(strengthColor(temp));
     };
 
     useEffect(() => {
-        changePassword('123456');
+        changePassword('');
     }, []);
 
     return (
@@ -108,8 +56,9 @@ const FirebaseRegister = ({ ...others }) => {
                         <Button
                             variant="outlined"
                             fullWidth
-                            onClick={googleHandler}
+                            onClick={registerWithGoogle}
                             size="large"
+                            disabled={isLoading}
                             sx={{
                                 color: 'grey.700',
                                 backgroundColor: theme.palette.grey[50],
@@ -141,16 +90,14 @@ const FirebaseRegister = ({ ...others }) => {
                             disableRipple
                             disabled
                         >
-                            OR
+                            O
                         </Button>
                         <Divider sx={{ flexGrow: 1 }} orientation="horizontal" />
                     </Box>
                 </Grid>
                 <Grid item xs={12} container alignItems="center" justifyContent="center">
                     <Box sx={{ mb: 2 }}>
-                        <Typography variant="subtitle1">
-                            Registrate con tu correo electronico
-                        </Typography>
+                        <Typography variant="subtitle1">Registrate con tu correo electrónico</Typography>
                     </Box>
                 </Grid>
             </Grid>
@@ -161,47 +108,29 @@ const FirebaseRegister = ({ ...others }) => {
                     lastname: '',
                     email: '',
                     password: '',
-                    agree: true
+                    agree: false,
+                    submit: null,
                 }}
                 validationSchema={Yup.object().shape({
                     name: Yup.string().max(255).required('Nombre es requerido'),
                     lastname: Yup.string().max(255).required('Apellido es requerido'),
-                    email: Yup.string().email('Correo invalido').max(255).required('Correo es requerido'),
+                    email: Yup.string().email('Correo inválido').max(255).required('Correo es requerido'),
                     password: Yup.string().min(5).max(255).required('Contraseña es requerida'),
-                    agree: Yup.boolean().required('Debes aceptar los terminos y condiciones')
+                    agree: Yup.boolean().oneOf([true], 'Debes aceptar los términos y condiciones').required(),
                 })}
                 onSubmit={async (values, { setErrors, setStatus, setSubmitting }) => {
                     try {
-                        const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password)
-
-                        const user = userCredential.user;
-                        console.log(user);
-                        if (user) {
-                            const findedUser = await SignupService.exec({
-                                name: values.name + ' ' + values.lastname,
-                                email: values.email,
-                                password: values.password,
-                                agreed: values.agree
-                            })
-                            dispatch({ type: SESSION_ACTIONS.UPDATE_USER, user: findedUser });
-                            navigate('/')
-                        }
-
-                        if (scriptedRef.current) {
-                            setStatus({ success: true });
-                            setSubmitting(false);
-                        }
-                    } catch (err) {
-                        if (err.code === 'auth/email-already-in-use') {
-                            //@ts-ignore
-                            setErrors({ submit: 'El correo ya esta en uso' });
-                        }
-                        if (scriptedRef.current) {
-                            setStatus({ success: false });
-                            //@ts-ignore
-                            setErrors({ submit: err.message });
-                            setSubmitting(false);
-                        }
+                        await registerWithEmail(
+                            `${values.name} ${values.lastname}`,
+                            values.email,
+                            values.password,
+                        );
+                        setStatus({ success: true });
+                    } catch (err: any) {
+                        setStatus({ success: false });
+                        setErrors({ submit: getErrorMessage(err.code) });
+                    } finally {
+                        setSubmitting(false);
                     }
                 }}
             >
@@ -213,14 +142,16 @@ const FirebaseRegister = ({ ...others }) => {
                                     fullWidth
                                     label="Nombre"
                                     margin="normal"
-                                    name="fname"
+                                    name="name"
                                     type="text"
-                                    onChange={(e) => values.name = e.target.value}
-                                    //@ts-ignore
+                                    value={values.name}
+                                    onBlur={handleBlur}
+                                    onChange={handleChange}
+                                    // @ts-ignore
                                     sx={{ ...theme.typography.customInput }}
                                 />
                                 {touched.name && errors.name && (
-                                    <FormHelperText error id="standard-weight-helper-text--register">
+                                    <FormHelperText error id="helper-name-register">
                                         {errors.name}
                                     </FormHelperText>
                                 )}
@@ -230,20 +161,23 @@ const FirebaseRegister = ({ ...others }) => {
                                     fullWidth
                                     label="Apellido"
                                     margin="normal"
-                                    name="lname"
+                                    name="lastname"
                                     type="text"
-                                    onChange={(e) => values.lastname = e.target.value}
-                                    //@ts-ignore
+                                    value={values.lastname}
+                                    onBlur={handleBlur}
+                                    onChange={handleChange}
+                                    // @ts-ignore
                                     sx={{ ...theme.typography.customInput }}
                                 />
                                 {touched.lastname && errors.lastname && (
-                                    <FormHelperText error id="standard-weight-helper-text--register">
+                                    <FormHelperText error id="helper-lastname-register">
                                         {errors.lastname}
                                     </FormHelperText>
                                 )}
                             </Grid>
                         </Grid>
-                        {/*@ts-ignore*/}
+
+                        {/* @ts-ignore */}
                         <FormControl fullWidth error={Boolean(touched.email && errors.email)} sx={{ ...theme.typography.customInput }}>
                             <InputLabel htmlFor="outlined-adornment-email-register">Correo electrónico</InputLabel>
                             <OutlinedInput
@@ -256,7 +190,7 @@ const FirebaseRegister = ({ ...others }) => {
                                 inputProps={{}}
                             />
                             {touched.email && errors.email && (
-                                <FormHelperText error id="standard-weight-helper-text--register">
+                                <FormHelperText error id="helper-email-register">
                                     {errors.email}
                                 </FormHelperText>
                             )}
@@ -265,7 +199,7 @@ const FirebaseRegister = ({ ...others }) => {
                         <FormControl
                             fullWidth
                             error={Boolean(touched.password && errors.password)}
-                            //@ts-ignore
+                            // @ts-ignore
                             sx={{ ...theme.typography.customInput }}
                         >
                             <InputLabel htmlFor="outlined-adornment-password-register">Contraseña</InputLabel>
@@ -274,7 +208,7 @@ const FirebaseRegister = ({ ...others }) => {
                                 type={showPassword ? 'text' : 'password'}
                                 value={values.password}
                                 name="password"
-                                label="Password"
+                                label="Contraseña"
                                 onBlur={handleBlur}
                                 onChange={(e) => {
                                     handleChange(e);
@@ -284,8 +218,8 @@ const FirebaseRegister = ({ ...others }) => {
                                     <InputAdornment position="end">
                                         <IconButton
                                             aria-label="toggle password visibility"
-                                            onClick={handleClickShowPassword}
-                                            onMouseDown={handleMouseDownPassword}
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            onMouseDown={(e) => e.preventDefault()}
                                             edge="end"
                                             size="large"
                                         >
@@ -296,7 +230,7 @@ const FirebaseRegister = ({ ...others }) => {
                                 inputProps={{}}
                             />
                             {touched.password && errors.password && (
-                                <FormHelperText error id="standard-weight-helper-text-password-register">
+                                <FormHelperText error id="helper-password-register">
                                     {errors.password}
                                 </FormHelperText>
                             )}
@@ -308,16 +242,12 @@ const FirebaseRegister = ({ ...others }) => {
                                     <Grid container spacing={2} alignItems="center">
                                         <Grid item>
                                             <Box
-                                                //@ts-ignore
                                                 style={{ backgroundColor: level?.color }}
                                                 sx={{ width: 85, height: 8, borderRadius: '7px' }}
-
                                             />
-
                                         </Grid>
                                         <Grid item>
                                             <Typography variant="subtitle1" fontSize="0.75rem">
-                                                {/*@ts-ignore*/}
                                                 {level?.label}
                                             </Typography>
                                         </Grid>
@@ -331,9 +261,9 @@ const FirebaseRegister = ({ ...others }) => {
                                 <FormControlLabel
                                     control={
                                         <Checkbox
-                                            checked={checked}
-                                            onChange={(event) => values.agree = event.target.checked}
-                                            name="checked"
+                                            checked={values.agree}
+                                            onChange={handleChange}
+                                            name="agree"
                                             color="primary"
                                         />
                                     }
@@ -341,22 +271,22 @@ const FirebaseRegister = ({ ...others }) => {
                                         <Typography variant="subtitle1">
                                             Acepto los &nbsp;
                                             <Typography variant="subtitle1" component={Link} to="#">
-                                                terminos y condiciones
+                                                términos y condiciones
                                             </Typography>
                                         </Typography>
                                     }
                                 />
                                 {touched.agree && errors.agree && (
-                                    <FormHelperText error id="standard-weight-helper-text--register">
+                                    <FormHelperText error id="helper-agree-register">
                                         {errors.agree}
                                     </FormHelperText>
                                 )}
                             </Grid>
                         </Grid>
-                        {/*@ts-ignore*/}
+
                         {errors.submit && (
                             <Box sx={{ mt: 3 }}>
-                                {/*@ts-ignore*/}
+                                {/* @ts-ignore */}
                                 <FormHelperText error>{errors.submit}</FormHelperText>
                             </Box>
                         )}
@@ -365,7 +295,7 @@ const FirebaseRegister = ({ ...others }) => {
                             <AnimateButton>
                                 <Button
                                     disableElevation
-                                    disabled={isSubmitting}
+                                    disabled={isSubmitting || isLoading}
                                     fullWidth
                                     size="large"
                                     type="submit"
