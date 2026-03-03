@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Yaper",
+    "slug": "Yaper",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#211d5b"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f9a2abff-d681-4711-95b2-90b16d9a3274"
+      }
+    },
+    "android": {
+      "package": "com.jsvptf.Yaper"
+    }
+  }
+}
