@@ -11,7 +11,7 @@ const chartData = {
                 show: false
             },
             zoom: {
-                enabled: true
+                enabled: false
             }
         },
         responsive: [

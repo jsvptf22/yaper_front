@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 // material-ui
 import { Avatar, CardContent, Divider, Grid, Typography } from '@mui/material';
@@ -130,7 +130,7 @@ const PopularCard = ({ isLoading }) => {
                             <Grid item xs={12}>
 
                                 {lastTenGames.map((game: LastTenGamesType) => (
-                                    <>
+                                    <React.Fragment key={game.id}>
                                         <Grid container direction="column">
                                             <Grid item>
                                                 <Grid container alignItems="center" justifyContent="space-between">
@@ -156,7 +156,7 @@ const PopularCard = ({ isLoading }) => {
 
                                         </Grid>
                                         <Divider sx={{ my: 1.5 }} />
-                                    </>
+                                    </React.Fragment>
                                 ))}
                             </Grid>
                         </Grid>

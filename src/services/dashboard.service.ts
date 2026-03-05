@@ -3,6 +3,13 @@ import axios from 'axios';
 import { IResponse, RESPONSE_STATUS } from './Response';
 import { StoreService } from './store.service';
 
+export interface WeeklyGamesType {
+  categoria: string;
+  Ganador: number;
+  Empate: number;
+  Perdedor: number;
+}
+
 export class DashboardService {
   static async getEarnings(): Promise<number> {
     const user = await StoreService.getUser();
@@ -55,6 +62,31 @@ export class DashboardService {
   }
 
   
+  static async getWeeklyGames(): Promise<WeeklyGamesType[]> {
+    const user = await StoreService.getUser();
+    if (!user) {
+      throw new Error('Error!');
+    }
+
+    const request = await axios.get<IResponse<WeeklyGamesType[]>>(
+      `${import.meta.env.VITE_HTTP_API}/dashboard/weeklyGames`,
+      {
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+        },
+      },
+    );
+    const response = request.data;
+
+    if (!response || response.status === RESPONSE_STATUS.ERROR) {
+      const message = response ? response.message : 'Error';
+      alert(message);
+      throw new Error(message);
+    }
+
+    return response.data;
+  }
+
   static async getLastTenGames(): Promise<LastTenGamesType[]> {
     const user = await StoreService.getUser();
     if(!user){

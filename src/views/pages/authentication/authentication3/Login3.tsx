@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 
 // material-ui
 import { Divider, Grid, Stack, Typography, useMediaQuery } from '@mui/material';
@@ -6,6 +6,8 @@ import { useTheme } from '@mui/material/styles';
 
 // project imports
 import Logo from '@app/ui-component/Logo';
+import { StateType } from '@app/store/reducer';
+import { useSelector } from 'react-redux';
 import AuthCardWrapper from '../AuthCardWrapper';
 import AuthWrapper1 from '../AuthWrapper1';
 import AuthLogin from '../auth-forms/AuthLogin';
@@ -17,6 +19,11 @@ import AuthLogin from '../auth-forms/AuthLogin';
 const Login = () => {
     const theme = useTheme();
     const matchDownSM = useMediaQuery(theme.breakpoints.down('md'));
+    const user = useSelector((state: StateType) => state.session.user);
+
+    if (user) {
+        return <Navigate to="/dashboard/default" replace />;
+    }
 
     return (
         <AuthWrapper1>

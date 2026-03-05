@@ -92,12 +92,13 @@ export default function themeTypography(theme): TypographyOptions {
         mainContent: {
             backgroundColor: theme.background,
             width: '100%',
-            minHeight: 'calc(100vh - 88px)',
+            height: 'calc(100vh - 88px)',
             flexGrow: 1,
             padding: '20px',
             marginTop: '88px',
             marginRight: '20px',
-            borderRadius: `${theme?.customization?.borderRadius}px`
+            borderRadius: `${theme?.customization?.borderRadius}px`,
+            overflowY: 'auto'
         },
         menuCaption: {
             fontSize: '0.875rem',

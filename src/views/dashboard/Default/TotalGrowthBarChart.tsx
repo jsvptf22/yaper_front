@@ -1,23 +1,28 @@
 import PropTypes from 'prop-types';
+import { useEffect, useState } from 'react';
 
 // material-ui
 import { Grid, Typography } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 
-// third-party
-import Chart from 'react-apexcharts';
+// recharts
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // project imports
 import { gridSpacing } from '@app/store/constant';
 import MainCard from '@app/ui-component/cards/MainCard';
 import SkeletonTotalGrowthBarChart from '@app/ui-component/cards/Skeleton/TotalGrowthBarChart';
-
-// chart data
-import chartData from './chart-data/total-growth-bar-chart';
-
+import { DashboardService, WeeklyGamesType } from '@app/services/dashboard.service';
 
 const TotalGrowthBarChart = ({ isLoading }) => {
     const theme = useTheme();
+    const [data, setData] = useState<WeeklyGamesType[]>([]);
+
+    useEffect(() => {
+        DashboardService.getWeeklyGames()
+            .then(setData)
+            .catch(() => {});
+    }, []);
 
     return (
         <>
@@ -38,7 +43,18 @@ const TotalGrowthBarChart = ({ isLoading }) => {
                             </Grid>
                         </Grid>
                         <Grid item xs={12}>
-                            <Chart {...chartData} />
+                            <ResponsiveContainer width="100%" height={480}>
+                                <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="categoria" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Legend />
+                                    <Bar dataKey="Ganador" stackId="a" fill={theme.palette.success.dark} />
+                                    <Bar dataKey="Empate" stackId="a" fill={theme.palette.grey[500]} />
+                                    <Bar dataKey="Perdedor" stackId="a" fill={theme.palette.error.main} />
+                                </BarChart>
+                            </ResponsiveContainer>
                         </Grid>
                     </Grid>
                 </MainCard>
