@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import type { DiceRoll, GameState, Move, Player } from '../types';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || `http://${window.location.hostname}:9000`;
+const SOCKET_BASE = import.meta.env.VITE_SOCKET_URL || `http://${window.location.hostname}:9000`;
+const SOCKET_URL = `${SOCKET_BASE}/parques`;
 const STORAGE_KEY = 'parques_game_state';
 
 interface StoredGameData {

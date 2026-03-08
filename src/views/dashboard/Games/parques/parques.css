@@ -2,17 +2,17 @@
 
 .board4-container {
   width: 100%;
-  min-height: 100vh;
+  height: auto;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-  padding: 2rem;
+  padding: 0;
 }
 
 .board4-grid {
-  width: 600px;
-  height: 600px;
+  width: 100%;
+  aspect-ratio: 1;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
@@ -432,29 +432,3 @@
     justify-content: center;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .board4-container {
-    padding: 1rem;
-  }
-
-  .board4-grid {
-    width: 90vmin;
-    height: 90vmin;
-    max-width: 500px;
-    max-height: 500px;
-  }
-}
-
-@media (max-width: 480px) {
-  .board4-container {
-    padding: 0.5rem;
-  }
-
-  .board4-grid {
-    width: 95vmin;
-    height: 95vmin;
-    max-width: 400px;
-    max-height: 400px;
-  }
-}
