@@ -1,186 +1,168 @@
+import { StateType } from '@app/store/reducer';
+import CloseIcon from '@mui/icons-material/ExitToApp';
+import { Avatar, Box, IconButton, Typography } from '@mui/material';
 import { useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { IGameProps } from '../Room';
+import './engine/App.css';
 import Board4 from './engine/components/Board4';
 import { useGameSocket } from './engine/hooks/useGameSocket';
-import { StateType } from '@app/store/reducer';
 import type { DiceRoll } from './engine/types';
-import CloseIcon from '@mui/icons-material/ExitToApp';
-import { Avatar, Box, IconButton, Typography } from '@mui/material';
-import './parques.css';
-import './engine/App.css';
 
 const COLOR_HEX: Record<string, string> = {
-  red: '#e53935',
-  blue: '#1565c0',
-  yellow: '#f9a825',
-  green: '#2e7d32',
+    red: '#e53935',
+    blue: '#1565c0',
+    yellow: '#f9a825',
+    green: '#2e7d32'
 };
 
 function renderDiceFace(value: number): string {
-  const faces = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
-  return faces[value - 1] || '🎲';
+    const faces = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+    return faces[value - 1] || '🎲';
 }
 
 const PARQUES = (props: IGameProps) => {
-  const user = useSelector((state: StateType) => state.session.user);
-  const [isRolling, setIsRolling] = useState(false);
-  const prevDiceRoll = useRef<DiceRoll | null>(null);
+    const user = useSelector((state: StateType) => state.session.user);
+    const [isRolling, setIsRolling] = useState(false);
+    const prevDiceRoll = useRef<DiceRoll | null>(null);
 
-  const {
-    gameState,
-    currentPlayer,
-    diceRoll,
-    validMoves,
-    error,
-    isReconnecting,
-    joinGame,
-    rollDice,
-    movePiece,
-  } = useGameSocket();
+    const { gameState, currentPlayer, diceRoll, validMoves, error, isReconnecting, joinGame, rollDice, movePiece } = useGameSocket();
 
-  // Clear rolling state when server responds with a result
-  useEffect(() => {
-    if (diceRoll !== prevDiceRoll.current) {
-      prevDiceRoll.current = diceRoll;
-      if (diceRoll) setIsRolling(false);
-    }
-  }, [diceRoll]);
+    // Clear rolling state when server responds with a result
+    useEffect(() => {
+        if (diceRoll !== prevDiceRoll.current) {
+            prevDiceRoll.current = diceRoll;
+            if (diceRoll) setIsRolling(false);
+        }
+    }, [diceRoll]);
 
-  const gameId = props.room?._id || '';
-  const playerName = user?.username || '';
+    const gameId = props.room?._id || '';
+    const playerName = user?.username || '';
 
-  useEffect(() => {
-    if (gameId && playerName) {
-      joinGame(gameId, playerName);
-    }
-  }, [gameId, playerName, joinGame]);
+    useEffect(() => {
+        if (gameId && playerName) {
+            joinGame(gameId, playerName);
+        }
+    }, [gameId, playerName, joinGame]);
 
-  if (!props.room || !user) return null;
+    if (!props.room || !user) return null;
 
-  const isMyTurn =
-    gameState &&
-    currentPlayer &&
-    gameState.players[gameState.currentPlayerIndex]?.id === currentPlayer.id;
+    const isMyTurn = gameState && currentPlayer && gameState.players[gameState.currentPlayerIndex]?.id === currentPlayer.id;
 
-  const canRollDice = isMyTurn && !diceRoll && !gameState?.gameFinished && !isRolling;
-  const activePlayer = gameState?.players[gameState.currentPlayerIndex];
-  const activeColor = activePlayer ? (COLOR_HEX[activePlayer.color] ?? activePlayer.color) : '#888';
+    const canRollDice = isMyTurn && !diceRoll && !gameState?.gameFinished && !isRolling;
+    const activePlayer = gameState?.players[gameState.currentPlayerIndex];
+    const activeColor = activePlayer ? COLOR_HEX[activePlayer.color] ?? activePlayer.color : '#888';
 
-  const handleRollDice = () => {
-    if (gameState && isMyTurn && !diceRoll && !isRolling) {
-      setIsRolling(true);
-      rollDice(gameState.id);
-    }
-  };
+    const handleRollDice = () => {
+        if (gameState && isMyTurn && !diceRoll && !isRolling) {
+            setIsRolling(true);
+            rollDice(gameState.id);
+        }
+    };
 
-  const diceCenter = (
-    <div className="dice-section-center">
-      {/* ── Indicador de turno ── */}
-      {activePlayer && (
-        <div className="turn-badge" style={{ borderColor: activeColor }}>
-          <span className="turn-dot" style={{ background: activeColor }} />
-          <span className="turn-name" style={{ color: activeColor }}>
-            {isMyTurn ? '¡Tu turno!' : activePlayer.name}
-          </span>
+    const diceCenter = (
+        <div className="dice-section-center">
+            {/* ── Indicador de turno ── */}
+            {activePlayer && (
+                <div className="turn-badge" style={{ borderColor: activeColor }}>
+                    <span className="turn-dot" style={{ background: activeColor }} />
+                    <span className="turn-name" style={{ color: activeColor }}>
+                        {isMyTurn ? '¡Tu turno!' : activePlayer.name}
+                    </span>
+                </div>
+            )}
+
+            {/* ── Dados ── */}
+            {isRolling ? (
+                <div className="rolling-indicator">
+                    <div style={{ display: 'flex', gap: 6 }}>
+                        <span className="rolling-die">🎲</span>
+                        <span className="rolling-die">🎲</span>
+                    </div>
+                    <span className="rolling-label">Calculando…</span>
+                </div>
+            ) : (
+                <div className="dice-container-double">
+                    <div
+                        className={`dice dice-sm ${diceRoll ? 'rolled' : ''} ${canRollDice ? 'pulse clickable' : ''}`}
+                        onClick={handleRollDice}
+                        style={{ cursor: canRollDice ? 'pointer' : 'default' }}
+                    >
+                        {diceRoll ? renderDiceFace(diceRoll.dice1) : '🎲'}
+                    </div>
+                    <div
+                        className={`dice dice-sm ${diceRoll ? 'rolled' : ''} ${canRollDice ? 'pulse clickable' : ''}`}
+                        onClick={handleRollDice}
+                        style={{ cursor: canRollDice ? 'pointer' : 'default' }}
+                    >
+                        {diceRoll ? renderDiceFace(diceRoll.dice2) : '🎲'}
+                    </div>
+                </div>
+            )}
+
+            {/* ── Resultado ── */}
+            {diceRoll && !isRolling && <div className="dice-total dice-total-sm">= {diceRoll.total}</div>}
+
+            {/* ── Hint cuando es mi turno ── */}
+            {canRollDice && !diceRoll && <div className="tap-to-roll">Toca para tirar</div>}
+
+            {/* ── Mensajes especiales ── */}
+            {diceRoll?.threeDoublesReward && <div className="three-doubles-message">¡¡¡TRES PARES!!! 🎆</div>}
+            {diceRoll?.releasedFromJail && !diceRoll?.threeDoublesReward && <div className="released-message">¡Liberadas! 🎊</div>}
+            {diceRoll?.attemptsRemaining !== undefined && diceRoll.attemptsRemaining > 0 && (
+                <div className="attempts-remaining">Intentos: {diceRoll.attemptsRemaining}</div>
+            )}
+            {diceRoll?.canRollAgain && !diceRoll?.releasedFromJail && !diceRoll?.threeDoublesReward && (
+                <div className="bonus-roll">¡Tiras de nuevo! 🎉</div>
+            )}
         </div>
-      )}
+    );
 
-      {/* ── Dados ── */}
-      {isRolling ? (
-        <div className="rolling-indicator">
-          <div style={{ display: 'flex', gap: 6 }}>
-            <span className="rolling-die">🎲</span>
-            <span className="rolling-die">🎲</span>
-          </div>
-          <span className="rolling-label">Calculando…</span>
+    return (
+        <div className="app game-screen">
+            <Box
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    px: 1,
+                    py: 0.5,
+                    bgcolor: 'background.paper',
+                    borderBottom: '1px solid',
+                    borderColor: 'divider'
+                }}
+            >
+                <Avatar sx={{ bgcolor: '#7b3f00', color: 'white', width: 32, height: 32, fontSize: '0.75rem' }}>P</Avatar>
+                <Typography variant="body2" fontWeight="bold" sx={{ flexGrow: 1 }}>
+                    {props.room.game.name}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                    Sala: <b>{props.room._id.slice(-6).toUpperCase()}</b>
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                    Apuesta: <b>${props.room.game.bet * props.room.users.length}</b>
+                </Typography>
+                <IconButton size="small" title="Abandonar" onClick={() => props.onPressLeave()}>
+                    <CloseIcon fontSize="small" />
+                </IconButton>
+            </Box>
+
+            {error && <div className="error-toast">{error}</div>}
+            {isReconnecting && <div className="reconnecting-banner">Reconectando a la partida...</div>}
+
+            {gameState?.gameFinished && <div className="winner-banner">🏆 {gameState.winner} ha ganado!</div>}
+
+            <div className="game-content">
+                <Board4
+                    centerContent={diceCenter}
+                    gameState={gameState}
+                    validMoves={validMoves}
+                    currentPlayerId={currentPlayer?.id}
+                    onMovePiece={(pieceId) => gameState && movePiece(gameState.id, pieceId)}
+                />
+            </div>
         </div>
-      ) : (
-        <div className="dice-container-double">
-          <div
-            className={`dice dice-sm ${diceRoll ? 'rolled' : ''} ${canRollDice ? 'pulse clickable' : ''}`}
-            onClick={handleRollDice}
-            style={{ cursor: canRollDice ? 'pointer' : 'default' }}
-          >
-            {diceRoll ? renderDiceFace(diceRoll.dice1) : '🎲'}
-          </div>
-          <div
-            className={`dice dice-sm ${diceRoll ? 'rolled' : ''} ${canRollDice ? 'pulse clickable' : ''}`}
-            onClick={handleRollDice}
-            style={{ cursor: canRollDice ? 'pointer' : 'default' }}
-          >
-            {diceRoll ? renderDiceFace(diceRoll.dice2) : '🎲'}
-          </div>
-        </div>
-      )}
-
-      {/* ── Resultado ── */}
-      {diceRoll && !isRolling && (
-        <div className="dice-total dice-total-sm">= {diceRoll.total}</div>
-      )}
-
-      {/* ── Hint cuando es mi turno ── */}
-      {canRollDice && !diceRoll && (
-        <div className="tap-to-roll">Toca para tirar</div>
-      )}
-
-      {/* ── Mensajes especiales ── */}
-      {diceRoll?.threeDoublesReward && (
-        <div className="three-doubles-message">¡¡¡TRES PARES!!! 🎆</div>
-      )}
-      {diceRoll?.releasedFromJail && !diceRoll?.threeDoublesReward && (
-        <div className="released-message">¡Liberadas! 🎊</div>
-      )}
-      {diceRoll?.attemptsRemaining !== undefined && diceRoll.attemptsRemaining > 0 && (
-        <div className="attempts-remaining">Intentos: {diceRoll.attemptsRemaining}</div>
-      )}
-      {diceRoll?.canRollAgain && !diceRoll?.releasedFromJail && !diceRoll?.threeDoublesReward && (
-        <div className="bonus-roll">¡Tiras de nuevo! 🎉</div>
-      )}
-
-    </div>
-  );
-
-  return (
-    <div className="app game-screen">
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1, py: 0.5, bgcolor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider' }}>
-        <Avatar sx={{ bgcolor: '#7b3f00', color: 'white', width: 32, height: 32, fontSize: '0.75rem' }}>
-          P
-        </Avatar>
-        <Typography variant="body2" fontWeight="bold" sx={{ flexGrow: 1 }}>
-          {props.room.game.name}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-          Sala: <b>{props.room._id.slice(-6).toUpperCase()}</b>
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-          Apuesta: <b>${props.room.game.bet * props.room.users.length}</b>
-        </Typography>
-        <IconButton size="small" title="Abandonar" onClick={() => props.onPressLeave()}>
-          <CloseIcon fontSize="small" />
-        </IconButton>
-      </Box>
-
-      {error && <div className="error-toast">{error}</div>}
-      {isReconnecting && (
-        <div className="reconnecting-banner">Reconectando a la partida...</div>
-      )}
-
-      {gameState?.gameFinished && (
-        <div className="winner-banner">🏆 {gameState.winner} ha ganado!</div>
-      )}
-
-      <div className="game-content">
-        <Board4
-          centerContent={diceCenter}
-          gameState={gameState}
-          validMoves={validMoves}
-          currentPlayerId={currentPlayer?.id}
-          onMovePiece={(pieceId) => gameState && movePiece(gameState.id, pieceId)}
-        />
-      </div>
-    </div>
-  );
+    );
 };
 
 export default PARQUES;
