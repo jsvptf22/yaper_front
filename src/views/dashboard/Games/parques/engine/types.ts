@@ -10,8 +10,10 @@ export interface Piece {
 
 export interface Player {
   id: string;
+  userId: string;
   name: string;
   color: PlayerColor;
+  house: number;
   pieces: Piece[];
   isActive: boolean;
   consecutiveTurns: number;

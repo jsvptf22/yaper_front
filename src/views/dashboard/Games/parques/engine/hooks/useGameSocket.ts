@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import type { DiceRoll, GameState, Move, Player } from '../types';
 
@@ -9,7 +9,7 @@ const STORAGE_KEY = 'parques_game_state';
 interface StoredGameData {
   gameId: string;
   playerName: string;
-  playerId: string;
+  playerId: string; // actual userId (not socket id)
 }
 
 const saveGameData = (data: StoredGameData) => {
@@ -48,38 +48,75 @@ export const useGameSocket = () => {
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [_lastPlayerIndex, setLastPlayerIndex] = useState<number>(-1);
 
+  // Pending timer that clears dice after a turn change — cancelled if new dice arrive first.
+  const diceRollClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastDiceRollRef = useRef<DiceRoll | null>(null);
+
+  /**
+   * Stores the most recent join parameters set by an explicit joinGame() call.
+   * Used by the 'connect' handler so that every socket reconnect (e.g. after a
+   * temporary network drop) automatically rejoins with the *current* game's data
+   * instead of relying on potentially stale localStorage values.
+   */
+  const joinParamsRef = useRef<StoredGameData | null>(null);
+
   useEffect(() => {
     const newSocket = io(SOCKET_URL);
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
-      console.log('Connected to game server');
+      console.log('Connected to game server, socket id:', newSocket.id);
+
+      // Prefer the params from an explicit joinGame() call (most reliable).
+      // Fall back to localStorage so that page refreshes also work before the
+      // component has had a chance to call joinGame() explicitly.
+      const params = joinParamsRef.current ?? loadGameData();
+      if (params?.gameId) {
+        console.log('[Parques] (Re)joining game:', params.gameId);
+        setIsReconnecting(true);
+        newSocket.emit('joinGame', {
+          gameId: params.gameId,
+          playerName: params.playerName,
+          userId: params.playerId,
+        });
+      }
     });
 
     newSocket.on('gameCreated', ({ gameId }) => {
       console.log('Game created:', gameId);
     });
 
-    newSocket.on('joinedGame', ({ player, game }) => {
+    newSocket.on('joinedGame', ({ player, game }: { player: Player; game: GameState }) => {
       setCurrentPlayer(player);
       setGameState(game);
       setIsReconnecting(false);
-      
-      // Save game data to localStorage
-      saveGameData({
+
+      // Initialise lastPlayerIndex so the gameState handler doesn't trigger a
+      // spurious dice-clear on the very first broadcast after reconnection.
+      setLastPlayerIndex(game.currentPlayerIndex);
+
+      // Persist join params with the server-confirmed real userId.
+      const stored: StoredGameData = {
         gameId: game.id,
         playerName: player.name,
-        playerId: player.id,
-      });
+        playerId: player.userId,
+      };
+      joinParamsRef.current = stored;
+      saveGameData(stored);
     });
 
     newSocket.on('gameState', (game: GameState) => {
-      // Detectar cambio de turno y resetear dados
+      // Detect turn change and schedule a dice-reset with a short delay so all
+      // players can see the previous roll result before it disappears.
       setLastPlayerIndex(prev => {
         if (prev !== -1 && prev !== game.currentPlayerIndex) {
-          // El turno cambió, resetear dados y movimientos válidos
-          setDiceRoll(null);
-          setValidMoves([]);
+          lastDiceRollRef.current = null;
+          if (diceRollClearTimerRef.current) clearTimeout(diceRollClearTimerRef.current);
+          diceRollClearTimerRef.current = setTimeout(() => {
+            setDiceRoll(null);
+            setValidMoves([]);
+            diceRollClearTimerRef.current = null;
+          }, 2500);
         }
         return game.currentPlayerIndex;
       });
@@ -89,28 +126,43 @@ export const useGameSocket = () => {
     newSocket.on('gameStarted', (game: GameState) => {
       setGameState(game);
       setLastPlayerIndex(game.currentPlayerIndex);
+      // Refresh currentPlayer from the updated game (colours/houses may have changed).
+      setCurrentPlayer((prev) => {
+        if (!prev) return prev;
+        return game.players.find((p) => p.id === prev.id) ?? prev;
+      });
     });
 
-    newSocket.on('diceRolled', ({ diceRoll: roll, validMoves: moves }) => {
+    newSocket.on('diceRolled', ({ diceRoll: roll, validMoves: moves }: { diceRoll: DiceRoll; validMoves: Move[] }) => {
+      // Cancel any pending clear from a previous turn so new dice aren't wiped.
+      if (diceRollClearTimerRef.current) {
+        clearTimeout(diceRollClearTimerRef.current);
+        diceRollClearTimerRef.current = null;
+      }
+      lastDiceRollRef.current = roll;
       setDiceRoll(roll);
       setValidMoves(moves);
     });
 
-    newSocket.on('pieceMoved', ({ move }) => {
+    newSocket.on('pieceMoved', ({ move }: { move: { pieceId: number } }) => {
       console.log('Piece moved:', move);
+      if (diceRollClearTimerRef.current) {
+        clearTimeout(diceRollClearTimerRef.current);
+        diceRollClearTimerRef.current = null;
+      }
       setDiceRoll(null);
       setValidMoves([]);
     });
 
-    newSocket.on('gameFinished', ({ winner }) => {
+    newSocket.on('gameFinished', ({ winner }: { winner: string }) => {
       console.log('Game finished! Winner:', winner);
-      // Clear stored game data when game finishes
       setTimeout(() => {
         clearGameData();
-      }, 5000); // Wait 5 seconds before clearing
+        joinParamsRef.current = null;
+      }, 5000);
     });
 
-    newSocket.on('error', ({ message }) => {
+    newSocket.on('error', ({ message }: { message: string }) => {
       setError(message);
       setTimeout(() => setError(null), 3000);
     });
@@ -124,31 +176,18 @@ export const useGameSocket = () => {
     };
   }, []);
 
-  const reconnectToGame = useCallback(() => {
-    const storedData = loadGameData();
-    if (storedData && socket) {
-      setIsReconnecting(true);
-      socket.emit('joinGame', {
-        gameId: storedData.gameId,
-        playerName: storedData.playerName,
-      });
-      return storedData;
-    }
-    return null;
-  }, [socket]);
-
   const createGame = useCallback(() => {
     socket?.emit('createGame');
   }, [socket]);
 
-  const joinGame = useCallback((gameId: string, playerName: string) => {
-    socket?.emit('joinGame', { gameId, playerName });
-    // Save immediately when joining
-    saveGameData({
-      gameId,
-      playerName,
-      playerId: socket?.id || '',
-    });
+  const joinGame = useCallback((gameId: string, playerName: string, userId?: string) => {
+    const params: StoredGameData = { gameId, playerName, playerId: userId || '' };
+
+    // Update the ref immediately so the next 'connect' event uses fresh params.
+    joinParamsRef.current = params;
+    saveGameData(params);
+
+    socket?.emit('joinGame', { gameId, playerName, userId });
   }, [socket]);
 
   const startGame = useCallback((gameId: string) => {
@@ -156,7 +195,11 @@ export const useGameSocket = () => {
   }, [socket]);
 
   const rollDice = useCallback((gameId: string) => {
-    socket?.emit('rollDice', { gameId });
+    if (!socket?.connected) {
+      console.warn('[Parques] rollDice: socket not connected');
+      return;
+    }
+    socket.emit('rollDice', { gameId });
   }, [socket]);
 
   const movePiece = useCallback((gameId: string, pieceId: number) => {
@@ -169,6 +212,7 @@ export const useGameSocket = () => {
 
   const leaveGame = useCallback(() => {
     clearGameData();
+    joinParamsRef.current = null;
     setGameState(null);
     setCurrentPlayer(null);
     setDiceRoll(null);
@@ -188,9 +232,7 @@ export const useGameSocket = () => {
     rollDice,
     movePiece,
     skipTurn,
-    reconnectToGame,
     leaveGame,
     getStoredGameData: loadGameData,
   };
 };
-

@@ -25,6 +25,7 @@ const PARQUES = (props: IGameProps) => {
     const user = useSelector((state: StateType) => state.session.user);
     const [isRolling, setIsRolling] = useState(false);
     const prevDiceRoll = useRef<DiceRoll | null>(null);
+    const rollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const { gameState, currentPlayer, diceRoll, validMoves, error, isReconnecting, joinGame, rollDice, movePiece } = useGameSocket();
 
@@ -32,31 +33,59 @@ const PARQUES = (props: IGameProps) => {
     useEffect(() => {
         if (diceRoll !== prevDiceRoll.current) {
             prevDiceRoll.current = diceRoll;
-            if (diceRoll) setIsRolling(false);
+            if (diceRoll) {
+                if (rollTimeoutRef.current) clearTimeout(rollTimeoutRef.current);
+                setIsRolling(false);
+            }
         }
     }, [diceRoll]);
 
-    const gameId = props.room?._id || '';
-    const playerName = user?.username || '';
+    // Reset rolling state on server error so dice don't spin forever
+    useEffect(() => {
+        if (error) {
+            if (rollTimeoutRef.current) clearTimeout(rollTimeoutRef.current);
+            setIsRolling(false);
+        }
+    }, [error]);
+
+    // Only join the socket game after room.state === 'PLAYING' (both players accepted).
+    // prepareGameData runs at that moment, so the in-memory game is ready with
+    // all players pre-assigned to their correct houses.
+    const gameId =
+        props.room?.state === 'PLAYING' && props.room?.lastMeetUp?._id
+            ? props.room.lastMeetUp._id.toString()
+            : '';
+    const playerName = user?.username || user?.name || '';
+    const userId = user?._id || '';
 
     useEffect(() => {
         if (gameId && playerName) {
-            joinGame(gameId, playerName);
+            joinGame(gameId, playerName, userId);
         }
-    }, [gameId, playerName, joinGame]);
+    }, [gameId, playerName, userId, joinGame]);
 
     if (!props.room || !user) return null;
 
     const isMyTurn = gameState && currentPlayer && gameState.players[gameState.currentPlayerIndex]?.id === currentPlayer.id;
 
-    const canRollDice = isMyTurn && !diceRoll && !gameState?.gameFinished && !isRolling;
+    // While in jail with pieces to rescue, the player may roll up to 3 times per turn.
+    // attemptsRemaining > 0 means the server kept the turn but expects another roll.
+    const isJailReattempt = !!(diceRoll && diceRoll.attemptsRemaining !== undefined && diceRoll.attemptsRemaining > 0);
+    // After escaping jail with doubles the player earns one extra roll (canRollAgain),
+    // but there are no pieces to move yet (validMoves=[]), so the dice must be clickable directly.
+    const isJailReleaseBonusRoll = !!(diceRoll?.releasedFromJail && diceRoll?.canRollAgain);
+    const canRollDice = isMyTurn && (!diceRoll || isJailReattempt || isJailReleaseBonusRoll) && !gameState?.gameFinished && !isRolling;
     const activePlayer = gameState?.players[gameState.currentPlayerIndex];
     const activeColor = activePlayer ? COLOR_HEX[activePlayer.color] ?? activePlayer.color : '#888';
 
     const handleRollDice = () => {
-        if (gameState && isMyTurn && !diceRoll && !isRolling) {
+        if (gameState && isMyTurn && (!diceRoll || isJailReattempt || isJailReleaseBonusRoll) && !isRolling) {
             setIsRolling(true);
             rollDice(gameState.id);
+
+            // Safety: reset spinner if the server never responds (network error, etc.)
+            if (rollTimeoutRef.current) clearTimeout(rollTimeoutRef.current);
+            rollTimeoutRef.current = setTimeout(() => setIsRolling(false), 6000);
         }
     };
 
@@ -105,6 +134,9 @@ const PARQUES = (props: IGameProps) => {
 
             {/* ── Hint cuando es mi turno ── */}
             {canRollDice && !diceRoll && <div className="tap-to-roll">Toca para tirar</div>}
+            {(isJailReattempt || isJailReleaseBonusRoll) && isMyTurn && !isRolling && (
+                <div className="tap-to-roll">Toca para volver a tirar</div>
+            )}
 
             {/* ── Mensajes especiales ── */}
             {diceRoll?.threeDoublesReward && <div className="three-doubles-message">¡¡¡TRES PARES!!! 🎆</div>}
@@ -112,7 +144,7 @@ const PARQUES = (props: IGameProps) => {
             {diceRoll?.attemptsRemaining !== undefined && diceRoll.attemptsRemaining > 0 && (
                 <div className="attempts-remaining">Intentos: {diceRoll.attemptsRemaining}</div>
             )}
-            {diceRoll?.canRollAgain && !diceRoll?.releasedFromJail && !diceRoll?.threeDoublesReward && (
+            {diceRoll?.canRollAgain && !diceRoll?.threeDoublesReward && (
                 <div className="bonus-roll">¡Tiras de nuevo! 🎉</div>
             )}
         </div>
