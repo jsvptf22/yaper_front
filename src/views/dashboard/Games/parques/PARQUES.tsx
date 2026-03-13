@@ -116,67 +116,6 @@ const PARQUES = (props: IGameProps) => {
         }
     };
 
-    const diceCenter = (
-        <div className="dice-section-center">
-            {/* ── Indicador de turno ── */}
-            {activePlayer && (
-                <div className="turn-badge" style={{ borderColor: activeColor }}>
-                    <span className="turn-dot" style={{ background: activeColor }} />
-                    <span className="turn-name" style={{ color: activeColor }}>
-                        {isMyTurn ? '¡Tu turno!' : activePlayer.name}
-                    </span>
-                </div>
-            )}
-
-            {/* ── Dados ── */}
-            {isRolling ? (
-                <div className="rolling-indicator">
-                    <div style={{ display: 'flex', gap: 6 }}>
-                        <span className="rolling-die">🎲</span>
-                        <span className="rolling-die">🎲</span>
-                    </div>
-                    <span className="rolling-label">Calculando…</span>
-                </div>
-            ) : (
-                <div className="dice-container-double">
-                    <div
-                        className={`dice dice-sm ${diceRoll ? 'rolled' : ''} ${canRollDice ? 'pulse clickable' : ''}`}
-                        onClick={handleRollDice}
-                        style={{ cursor: canRollDice ? 'pointer' : 'default' }}
-                    >
-                        {diceRoll ? renderDiceFace(diceRoll.dice1) : '🎲'}
-                    </div>
-                    <div
-                        className={`dice dice-sm ${diceRoll ? 'rolled' : ''} ${canRollDice ? 'pulse clickable' : ''}`}
-                        onClick={handleRollDice}
-                        style={{ cursor: canRollDice ? 'pointer' : 'default' }}
-                    >
-                        {diceRoll ? renderDiceFace(diceRoll.dice2) : '🎲'}
-                    </div>
-                </div>
-            )}
-
-            {/* ── Resultado ── */}
-            {diceRoll && !isRolling && <div className="dice-total dice-total-sm">= {diceRoll.total}</div>}
-
-            {/* ── Hint cuando es mi turno ── */}
-            {canRollDice && !diceRoll && <div className="tap-to-roll">Toca para tirar</div>}
-            {(isJailReattempt || isJailReleaseBonusRoll) && isMyTurn && !isRolling && (
-                <div className="tap-to-roll">Toca para volver a tirar</div>
-            )}
-
-            {/* ── Mensajes especiales ── */}
-            {diceRoll?.threeDoublesReward && <div className="three-doubles-message">¡¡¡TRES PARES!!! 🎆</div>}
-            {diceRoll?.releasedFromJail && !diceRoll?.threeDoublesReward && <div className="released-message">¡Liberadas! 🎊</div>}
-            {diceRoll?.attemptsRemaining !== undefined && diceRoll.attemptsRemaining > 0 && (
-                <div className="attempts-remaining">Intentos: {diceRoll.attemptsRemaining}</div>
-            )}
-            {diceRoll?.canRollAgain && !diceRoll?.threeDoublesReward && (
-                <div className="bonus-roll">¡Tiras de nuevo! 🎉</div>
-            )}
-        </div>
-    );
-
     return (
         <div className="app game-screen">
             <Box
@@ -220,13 +159,65 @@ const PARQUES = (props: IGameProps) => {
             </Dialog>
 
             <div className="game-content">
-                <Board4
-                    centerContent={diceCenter}
-                    gameState={gameState}
-                    validMoves={validMoves}
-                    currentPlayerId={currentPlayer?.id}
-                    onMovePiece={handleSelectPiece}
-                />
+                <div className="game-layout">
+                    <Board4
+                        gameState={gameState}
+                        validMoves={validMoves}
+                        currentPlayerId={currentPlayer?.id}
+                        onMovePiece={handleSelectPiece}
+                    />
+
+                    {/* ── Barra de dados inferior ── */}
+                    <div className="dice-bottom-bar">
+                        {activePlayer && (
+                            <div className="turn-badge" style={{ borderColor: activeColor }}>
+                                <span className="turn-dot" style={{ background: activeColor }} />
+                                <span className="turn-name" style={{ color: activeColor }}>
+                                    {isMyTurn ? '¡Tu turno!' : activePlayer.name}
+                                </span>
+                            </div>
+                        )}
+
+                        {isRolling ? (
+                            <div className="rolling-indicator" style={{ flexDirection: 'row', gap: 6 }}>
+                                <span className="rolling-die">🎲</span>
+                                <span className="rolling-die">🎲</span>
+                            </div>
+                        ) : (
+                            <div className="dice-container-double">
+                                <div
+                                    className={`dice dice-sm ${diceRoll ? 'rolled' : ''} ${canRollDice ? 'pulse clickable' : ''}`}
+                                    onClick={handleRollDice}
+                                    style={{ cursor: canRollDice ? 'pointer' : 'default' }}
+                                >
+                                    {diceRoll ? renderDiceFace(diceRoll.dice1) : '🎲'}
+                                </div>
+                                <div
+                                    className={`dice dice-sm ${diceRoll ? 'rolled' : ''} ${canRollDice ? 'pulse clickable' : ''}`}
+                                    onClick={handleRollDice}
+                                    style={{ cursor: canRollDice ? 'pointer' : 'default' }}
+                                >
+                                    {diceRoll ? renderDiceFace(diceRoll.dice2) : '🎲'}
+                                </div>
+                            </div>
+                        )}
+
+                        {diceRoll && !isRolling && <div className="dice-total dice-total-sm">= {diceRoll.total}</div>}
+
+                        {canRollDice && !diceRoll && <span className="tap-to-roll">Toca para tirar</span>}
+                        {(isJailReattempt || isJailReleaseBonusRoll) && isMyTurn && !isRolling && (
+                            <span className="tap-to-roll">Toca para volver a tirar</span>
+                        )}
+                        {diceRoll?.threeDoublesReward && <span className="three-doubles-message">¡¡¡TRES PARES!!! 🎆</span>}
+                        {diceRoll?.releasedFromJail && !diceRoll?.threeDoublesReward && <span className="released-message">¡Liberadas! 🎊</span>}
+                        {diceRoll?.attemptsRemaining !== undefined && diceRoll.attemptsRemaining > 0 && (
+                            <span className="attempts-remaining">Intentos: {diceRoll.attemptsRemaining}</span>
+                        )}
+                        {diceRoll?.canRollAgain && !diceRoll?.threeDoublesReward && (
+                            <span className="bonus-roll">¡Tiras de nuevo! 🎉</span>
+                        )}
+                    </div>
+                </div>
 
                 {/* ── Selector de pasos ── */}
                 {selectedPieceId !== null && diceRoll && gameState && (

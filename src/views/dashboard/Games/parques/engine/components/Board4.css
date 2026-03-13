@@ -1,18 +1,22 @@
 /* Board4 - Cuadrícula 3x3 Simple */
 
 .board4-container {
+  flex: 1;
+  min-height: 0;
   width: 100%;
-  height: auto;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
   padding: 0;
+  overflow: hidden;
 }
 
 .board4-grid {
-  width: 100%;
+  /* Square that fits within available width AND height */
+  height: 100%;
   aspect-ratio: 1;
+  max-width: 100%;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);

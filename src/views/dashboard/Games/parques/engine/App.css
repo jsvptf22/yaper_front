@@ -703,11 +703,52 @@ body::before {
 .game-content {
   flex: 1;
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  flex-direction: column;
   width: 100%;
   min-height: 0;
   overflow: hidden;
+}
+
+.game-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Barra de dados en la parte inferior del tablero ── */
+.dice-bottom-bar {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(15, 20, 25, 0.92);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  min-height: 50px;
+  box-sizing: border-box;
+}
+
+.dice-bottom-bar .turn-badge {
+  width: auto;
+  flex-shrink: 0;
+}
+
+.dice-bottom-bar .bonus-roll,
+.dice-bottom-bar .released-message,
+.dice-bottom-bar .attempts-remaining,
+.dice-bottom-bar .tap-to-roll,
+.dice-bottom-bar .three-doubles-message {
+  width: auto;
+  font-size: 0.75rem;
+  text-align: left;
 }
 
 .players-sidebar {
@@ -1252,7 +1293,7 @@ body::before {
 @media (max-height: 700px) and (max-width: 768px) {
   .game-content {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     padding: 0;
     height: 100%;
     overflow: hidden;

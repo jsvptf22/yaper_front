@@ -94,9 +94,8 @@ export default function themeTypography(theme): TypographyOptions {
             width: '100%',
             height: 'calc(100vh - 88px)',
             flexGrow: 1,
-            padding: '20px',
             marginTop: '88px',
-            marginRight: '20px',
+            marginRight: '12px',
             borderRadius: `${theme?.customization?.borderRadius}px`,
             overflowY: 'auto'
         },
