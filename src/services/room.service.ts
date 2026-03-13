@@ -20,6 +20,8 @@ export class RoomService {
             image
             bet
             component
+            minUsers
+            maxUsers
           }
           lastMeetUp {
             _id
@@ -55,6 +57,8 @@ export class RoomService {
             image
             bet
             component
+            minUsers
+            maxUsers
           }
           lastMeetUp {
             _id

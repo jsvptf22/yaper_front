@@ -1,6 +1,6 @@
 import { StateType } from '@app/store/reducer';
 import CloseIcon from '@mui/icons-material/ExitToApp';
-import { Avatar, Box, IconButton, Typography } from '@mui/material';
+import { Avatar, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Typography } from '@mui/material';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { IGameProps } from '../Room';
@@ -209,7 +209,15 @@ const PARQUES = (props: IGameProps) => {
             {error && <div className="error-toast">{error}</div>}
             {isReconnecting && <div className="reconnecting-banner">Reconectando a la partida...</div>}
 
-            {gameState?.gameFinished && <div className="winner-banner">🏆 {gameState.winner} ha ganado!</div>}
+            <Dialog open={!!gameState?.gameFinished} onClose={props.onPressLeave}>
+                <DialogTitle sx={{ textAlign: 'center', fontSize: '1.5rem' }}>🏆 ¡Fin de la partida!</DialogTitle>
+                <DialogContent sx={{ textAlign: 'center', px: 4, pb: 1 }}>
+                    <Typography variant="h6">{gameState?.winner} ha ganado</Typography>
+                </DialogContent>
+                <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
+                    <Button variant="contained" onClick={props.onPressLeave}>Cerrar</Button>
+                </DialogActions>
+            </Dialog>
 
             <div className="game-content">
                 <Board4

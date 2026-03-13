@@ -64,7 +64,10 @@ const Room = ({ room, setRoom }: IRoomProps) => {
     const [socket, setSocket] = useState<Socket | null>(null);
 
     // Derived directly from room to avoid render race condition with useEffect
-    const showIncompleteRoom = [RoomEvents.CREATE, RoomEvents.ADD_USER].includes(room.lastEvent as RoomEvents);
+    const showIncompleteRoom = [RoomEvents.CREATE, RoomEvents.ADD_USER, RoomEvents.MINIMUM_REACHED].includes(room.lastEvent as RoomEvents);
+    const isCreator = room.users?.[0]?._id === user._id;
+    const playerCount = room.users?.length ?? 0;
+    const hasMinimumPlayers = playerCount >= (room.game.minUsers ?? room.game.maxUsers ?? playerCount);
 
     // Derived values — computed from room on every render
     const userInMeetup = room?.lastMeetUp?.users?.find((u) => u.user_id === user._id) ?? null;
@@ -257,18 +260,20 @@ const Room = ({ room, setRoom }: IRoomProps) => {
             >
                 <DialogContent>
                     <DialogContentText id="alert-dialog-description">
-                        Esperando contrincante.
-                        <LinearProgress />
+                        {isCreator && hasMinimumPlayers && !userInMeetup
+                            ? `¿Iniciar partida con ${playerCount} jugador${playerCount !== 1 ? 'es' : ''}?`
+                            : 'Esperando contrincante.'}
+                        {!(isCreator && hasMinimumPlayers && !userInMeetup) && <LinearProgress />}
                     </DialogContentText>
                 </DialogContent>
                 <DialogActions>
-                    {(room.users?.length ?? 0) >= 2 && !userInMeetup ? (
+                    {isCreator && hasMinimumPlayers && !userInMeetup ? (
                         <>
                             <Button sx={{ width: '50%' }} variant="contained" color="success" onClick={handleStartGame}>
-                                Iniciar Juego
+                                Iniciar
                             </Button>
                             <Button sx={{ width: '50%' }} variant="contained" onClick={validateLeaveRoom}>
-                                Abandonar
+                                Esperar más
                             </Button>
                         </>
                     ) : (

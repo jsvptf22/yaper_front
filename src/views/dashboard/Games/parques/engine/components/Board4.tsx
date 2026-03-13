@@ -72,14 +72,18 @@ const Board4: React.FC<Board4Props> = ({ centerContent, gameState, validMoves = 
     /** render 4 jail slots for a color (top-left=yellow, top-right=blue, bottom-left=red, bottom-right=green) */
     const jailCorner = (color: string, infoAtBottom = false) => {
         const player = players.find((p) => p.color === color);
-        const jailed = player ? player.pieces.filter((p) => p.isInJail) : [];
+        const allPieces = player ? player.pieces : [];
 
         const slots = [0, 1, 2, 3].map((idx) => {
-            const piece = jailed[idx];
-            const isValid = piece != null && validPieceIds.has(piece.id) && player!.id === currentPlayerId;
+            const piece = allPieces.find((p) => p.id === idx);
+            const isFinished = piece?.isFinished ?? false;
+            const isValid = !!piece && piece.isInJail && validPieceIds.has(piece.id) && player!.id === currentPlayerId;
             return (
                 <div key={idx} className="corner-cell corner-slot">
-                    {piece && <Pt piece={piece} player={player!} isValid={isValid} onMovePiece={onMovePiece} />}
+                    {isFinished
+                        ? <div className="pt-finished" style={{ background: COLOR_HEX[color] ?? color }}>✓</div>
+                        : piece?.isInJail && <Pt piece={piece} player={player!} isValid={isValid} onMovePiece={onMovePiece} />
+                    }
                 </div>
             );
         });

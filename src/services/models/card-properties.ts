@@ -7,4 +7,6 @@ export interface IGame  {
   image: string;
   component: string;
   bet: number;
+  minUsers?: number;
+  maxUsers?: number;
 }
