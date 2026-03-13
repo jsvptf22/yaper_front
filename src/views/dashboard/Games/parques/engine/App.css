@@ -908,6 +908,104 @@ body::before {
   border-radius: 8px;
 }
 
+/* ── Selector de pasos (modal al tocar ficha) ── */
+.step-selector-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.step-selector {
+  background: var(--color-surface);
+  border: 2px solid rgba(255, 107, 107, 0.3);
+  border-radius: 16px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  box-shadow: var(--shadow-lg);
+  min-width: 220px;
+  animation: slideUp 0.2s ease-out;
+}
+
+.step-selector-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.step-options {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.step-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 60px;
+  height: 68px;
+  background: var(--color-surface-light);
+  border: 2px solid rgba(255, 107, 107, 0.4);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--color-text);
+  font-family: 'Poppins', sans-serif;
+}
+
+.step-option:hover:not(:disabled) {
+  background: rgba(255, 107, 107, 0.15);
+  border-color: var(--color-accent);
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+}
+
+.step-option-disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.step-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+  margin-top: 6px;
+}
+
+.step-num {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.step-cancel {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--color-text-dim);
+  padding: 6px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-family: 'Poppins', sans-serif;
+  transition: all 0.2s ease;
+}
+
+.step-cancel:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
 .error-toast {
   position: fixed;
   top: 20px;

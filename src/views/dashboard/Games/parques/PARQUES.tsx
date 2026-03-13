@@ -1,7 +1,7 @@
 import { StateType } from '@app/store/reducer';
 import CloseIcon from '@mui/icons-material/ExitToApp';
 import { Avatar, Box, IconButton, Typography } from '@mui/material';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { IGameProps } from '../Room';
 import './engine/App.css';
@@ -27,7 +27,8 @@ const PARQUES = (props: IGameProps) => {
     const prevDiceRoll = useRef<DiceRoll | null>(null);
     const rollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const { gameState, currentPlayer, diceRoll, validMoves, error, isReconnecting, joinGame, rollDice, movePiece } = useGameSocket();
+    const { gameState, currentPlayer, diceRoll, validMoves, validMovesBySteps, error, isReconnecting, joinGame, rollDice, movePiece } = useGameSocket();
+    const [selectedPieceId, setSelectedPieceId] = useState<number | null>(null);
 
     // Clear rolling state when server responds with a result
     useEffect(() => {
@@ -47,6 +48,32 @@ const PARQUES = (props: IGameProps) => {
             setIsRolling(false);
         }
     }, [error]);
+
+    // Clear step selector when dice are cleared (turn changed or piece moved)
+    useEffect(() => {
+        if (!diceRoll) setSelectedPieceId(null);
+    }, [diceRoll]);
+
+    // Step options available for the current move come directly from validMovesBySteps keys
+    const currentStepOptions = Object.keys(validMovesBySteps).map(Number);
+
+    // Called when user taps a highlighted piece
+    const handleSelectPiece = useCallback((pieceId: number) => {
+        if (!gameState || !diceRoll) return;
+        if (selectedPieceId !== null) return; // already selecting
+
+        const currentPlayerData = gameState.players[gameState.currentPlayerIndex];
+        const piece = currentPlayerData?.pieces.find(p => p.id === pieceId);
+
+        // Jail release moves are to a fixed position — no step choice needed
+        if (piece?.isInJail) {
+            movePiece(gameState.id, pieceId, diceRoll.total);
+            return;
+        }
+
+        console.log('[selectPiece] pieceId:', pieceId, 'validMovesBySteps:', validMovesBySteps);
+        setSelectedPieceId(pieceId);
+    }, [gameState, diceRoll, selectedPieceId, movePiece, validMovesBySteps]);
 
     // Only join the socket game after room.state === 'PLAYING' (both players accepted).
     // prepareGameData runs at that moment, so the in-memory game is ready with
@@ -190,8 +217,39 @@ const PARQUES = (props: IGameProps) => {
                     gameState={gameState}
                     validMoves={validMoves}
                     currentPlayerId={currentPlayer?.id}
-                    onMovePiece={(pieceId) => gameState && movePiece(gameState.id, pieceId)}
+                    onMovePiece={handleSelectPiece}
                 />
+
+                {/* ── Selector de pasos ── */}
+                {selectedPieceId !== null && diceRoll && gameState && (
+                    <div className="step-selector-overlay" onClick={() => setSelectedPieceId(null)}>
+                        <div className="step-selector" onClick={e => e.stopPropagation()}>
+                            <div className="step-selector-title">¿Cuánto mover?</div>
+                            <div className="step-options">
+                                {currentStepOptions.map(steps => {
+                                    const canMove = !!(validMovesBySteps[steps]?.some(m => m.pieceId === selectedPieceId));
+                                    return (
+                                        <button
+                                            key={steps}
+                                            className={`step-option${canMove ? '' : ' step-option-disabled'}`}
+                                            onClick={() => {
+                                                if (canMove) {
+                                                    movePiece(gameState.id, selectedPieceId, steps);
+                                                    setSelectedPieceId(null);
+                                                }
+                                            }}
+                                            disabled={!canMove}
+                                        >
+                                            <span className="step-icon">{steps <= 6 ? renderDiceFace(steps) : steps}</span>
+                                            <span className="step-num">{steps}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <button className="step-cancel" onClick={() => setSelectedPieceId(null)}>Cancelar</button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

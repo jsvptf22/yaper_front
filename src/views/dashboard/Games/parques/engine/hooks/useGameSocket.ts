@@ -44,6 +44,7 @@ export const useGameSocket = () => {
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
   const [diceRoll, setDiceRoll] = useState<DiceRoll | null>(null);
   const [validMoves, setValidMoves] = useState<Move[]>([]);
+  const [validMovesBySteps, setValidMovesBySteps] = useState<Record<number, Move[]>>({});
   const [error, setError] = useState<string | null>(null);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [_lastPlayerIndex, setLastPlayerIndex] = useState<number>(-1);
@@ -133,25 +134,35 @@ export const useGameSocket = () => {
       });
     });
 
-    newSocket.on('diceRolled', ({ diceRoll: roll, validMoves: moves }: { diceRoll: DiceRoll; validMoves: Move[] }) => {
+    newSocket.on('diceRolled', ({ diceRoll: roll, validMoves: moves, validMovesBySteps: movesBySteps }: { diceRoll: DiceRoll; validMoves: Move[]; validMovesBySteps?: Record<number, Move[]> }) => {
       // Cancel any pending clear from a previous turn so new dice aren't wiped.
       if (diceRollClearTimerRef.current) {
         clearTimeout(diceRollClearTimerRef.current);
         diceRollClearTimerRef.current = null;
       }
+      console.log('[diceRolled] validMovesBySteps:', movesBySteps, 'validMoves:', moves);
       lastDiceRollRef.current = roll;
       setDiceRoll(roll);
       setValidMoves(moves);
+      setValidMovesBySteps(movesBySteps || {});
     });
 
-    newSocket.on('pieceMoved', ({ move }: { move: { pieceId: number } }) => {
-      console.log('Piece moved:', move);
+    newSocket.on('pieceMoved', ({ move, validMoves: moves, validMovesBySteps: movesBySteps }: { move: { pieceId: number }; validMoves?: Move[]; validMovesBySteps?: Record<number, Move[]> }) => {
+      console.log('Piece moved:', move, 'remaining validMoves:', moves);
       if (diceRollClearTimerRef.current) {
         clearTimeout(diceRollClearTimerRef.current);
         diceRollClearTimerRef.current = null;
       }
-      setDiceRoll(null);
-      setValidMoves([]);
+      if (moves && moves.length > 0) {
+        // Still has remaining dice steps — keep dice visible, update valid moves
+        setValidMoves(moves);
+        setValidMovesBySteps(movesBySteps || {});
+      } else {
+        // All dice consumed — clear everything
+        setDiceRoll(null);
+        setValidMoves([]);
+        setValidMovesBySteps({});
+      }
     });
 
     newSocket.on('gameFinished', ({ winner }: { winner: string }) => {
@@ -202,8 +213,8 @@ export const useGameSocket = () => {
     socket.emit('rollDice', { gameId });
   }, [socket]);
 
-  const movePiece = useCallback((gameId: string, pieceId: number) => {
-    socket?.emit('movePiece', { gameId, pieceId });
+  const movePiece = useCallback((gameId: string, pieceId: number, steps: number) => {
+    socket?.emit('movePiece', { gameId, pieceId, steps });
   }, [socket]);
 
   const skipTurn = useCallback((gameId: string) => {
@@ -224,6 +235,7 @@ export const useGameSocket = () => {
     currentPlayer,
     diceRoll,
     validMoves,
+    validMovesBySteps,
     error,
     isReconnecting,
     createGame,
